@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bezi @ Target</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  :root{--bg:#f7f6f2;--card:#ffffff;--border:#e8e6e0;--text:#1a1a1a;--muted:#6b6b6b;
+        --green:#2d7a4f;--green-bg:#eaf4ee;--red:#c0392b;--red-bg:#fdf0ee}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+
+  /* HEADER */
+  .header{background:#1a1a1a;color:white;padding:28px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+  .header-left h1{font-size:22px;font-weight:600;letter-spacing:-0.3px}
+  .header-left p{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;font-family:'DM Mono',monospace}
+  .kpi-strip{display:flex;gap:28px;flex-wrap:wrap}
+  .kpi{text-align:right}
+  .kpi-value{font-size:22px;font-weight:600;letter-spacing:-0.5px}
+  .kpi-label{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;font-family:'DM Mono',monospace}
+  .kpi-sub{border-left:1px solid rgba(255,255,255,0.15);padding-left:28px}
+
+  /* LAYOUT */
+  .section{max-width:1400px;margin:32px auto;padding:0 32px}
+  .section-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+  .section-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;white-space:nowrap}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px}
+  .chart-wrap{position:relative;height:280px}
+  .banner{background:#fff8e1;border:1px solid #f0d78c;border-radius:8px;padding:10px 16px;font-size:12px;color:#8a6a12;margin-bottom:16px;font-family:'DM Mono',monospace}
+
+  /* FILTER PILLS */
+  .filter-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+  .filter-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;white-space:nowrap}
+  .filter-divider{width:1px;height:20px;background:var(--border);margin:0 4px}
+  .pill{display:inline-flex;align-items:center;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:white;color:var(--muted);transition:all 0.15s;white-space:nowrap;font-family:'DM Sans',sans-serif}
+  .pill:hover{border-color:#aaa;color:var(--text)}
+  .pill.active{background:#1a1a1a;border-color:#1a1a1a;color:white}
+  .pill.active.nyc{background:#2563eb;border-color:#2563eb;color:white}
+  .pill.active.li_west{background:#d97706;border-color:#d97706;color:white}
+  .pill.active.nj{background:#16a34a;border-color:#16a34a;color:white}
+  .pill.active.ne{background:#9333ea;border-color:#9333ea;color:white}
+  .pill.active.ca{background:#0891b2;border-color:#0891b2;color:white}
+  .pill.active.sw{background:#b45309;border-color:#b45309;color:white}
+  .toggle-pill{background:#f4f3ef}
+  .toggle-pill.active{background:#374151;border-color:#374151}
+
+  /* TABLE */
+  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;background:white}
+  thead th{background:#f4f3ef;padding:10px 14px;text-align:left;font-size:11px;font-weight:600;
+            text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);border-bottom:1px solid var(--border);
+            white-space:nowrap;cursor:pointer;user-select:none}
+  thead th:not(:first-child){text-align:right}
+  thead th:hover{color:var(--text)}
+  thead th .sort-icon{display:inline-block;margin-left:4px;opacity:0.4;font-size:10px}
+  thead th.sorted .sort-icon{opacity:1}
+  tbody tr{border-bottom:1px solid #f0eeea}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:#fafaf8}
+  tbody tr.total-row{background:#f4f3ef!important;border-bottom:2px solid var(--border)!important}
+  tbody tr.total-row td{font-weight:600}
+  tbody tr.group-row td{background:#faf9f6!important;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;padding-top:12px}
+  tbody td{padding:9px 14px;font-size:13px;white-space:nowrap}
+  tbody td:not(:first-child){text-align:right;font-family:'DM Mono',monospace;font-size:12px}
+  .store-name{font-weight:500}
+  .rank{color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;margin-right:6px}
+  .group-tag{display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;
+              margin-left:5px;vertical-align:middle;text-transform:uppercase;letter-spacing:0.3px}
+  .gtag-nyc{background:#dbeafe;color:#1d4ed8}
+  .gtag-li_west{background:#fef3c7;color:#b45309}
+  .gtag-nj{background:#dcfce7;color:#15803d}
+  .gtag-ne{background:#f3e8ff;color:#7e22ce}
+  .gtag-ca{background:#cffafe;color:#0e7490}
+  .gtag-sw{background:#fef0dc;color:#9a5b0a}
+  .dip-tag{display:inline-block;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;
+           margin-left:5px;vertical-align:middle;text-transform:uppercase;letter-spacing:0.3px;background:#e5e7eb;color:#4b5563}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace}
+  .badge-up{background:var(--green-bg);color:var(--green)}
+  .badge-down{background:var(--red-bg);color:var(--red)}
+  .badge-new{background:#eef2ff;color:#4338ca}
+  .date-sub{font-size:10px;font-weight:400;color:var(--muted);display:block;font-family:'DM Mono',monospace;
+             text-transform:none;letter-spacing:0;margin-top:1px}
+
+  /* PASSWORD GATE */
+  #gateOverlay{position:fixed;inset:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;z-index:9999}
+  .gate-box{background:white;border-radius:12px;padding:40px 36px;width:340px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+  .gate-box h2{font-size:18px;font-weight:600;margin-bottom:6px;color:var(--text)}
+  .gate-box p{font-size:12px;color:var(--muted);margin-bottom:20px}
+  .gate-box input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;
+                   font-family:'DM Mono',monospace;margin-bottom:12px;outline:none;box-sizing:border-box}
+  .gate-box input:focus{border-color:#1a1a1a}
+  .gate-box button{width:100%;padding:11px;border:none;border-radius:8px;background:#1a1a1a;color:white;
+                    font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .gate-box button:hover{background:#333}
+  .gate-error{color:var(--red);font-size:12px;margin-top:10px;display:none}
+  #dashboardContent{display:none}
+</style>
+</head>
+<body>
+
+<div id="gateOverlay">
+  <div class="gate-box">
+    <h2>🔒 Bezi @ Target</h2>
+    <p>Enter the team password to view the dashboard</p>
+    <input type="password" id="gatePassword" placeholder="Password" autocomplete="off" onkeydown="if(event.key==='Enter')checkPassword()">
+    <button onclick="checkPassword()">Enter</button>
+    <div class="gate-error" id="gateError">Incorrect password — try again</div>
+  </div>
+</div>
+
+<div id="dashboardContent">
+<div class="header">
+  <div class="header-left">
+    <h1>Bezi @ Target</h1>
+    <p>Week of Aug 16&ndash;22, 2026 &nbsp;&middot;&nbsp; 69 active stores &nbsp;&middot;&nbsp; 8 SKUs (Tubs + Dippers)</p>
+  </div>
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-value">$1,252</div><div class="kpi-label">Total Revenue</div></div>
+    <div class="kpi"><div class="kpi-value">185</div><div class="kpi-label">Total Units</div></div>
+    <div class="kpi"><div class="kpi-value">$1,252</div><div class="kpi-label">Last Wk Rev</div></div>
+    <div class="kpi"><div class="kpi-value">185</div><div class="kpi-label">Last Wk Units</div></div>
+    <div class="kpi kpi-sub"><div class="kpi-value">142</div><div class="kpi-label">Tub Units</div></div>
+    <div class="kpi"><div class="kpi-value">43</div><div class="kpi-label">Dipper Units</div></div>
+  </div>
+</div>
+
+<div class="section" style="margin-bottom:0;margin-top:24px;">
+  <div class="banner">📊 First week of Target tracking &mdash; L4W averages and trend arrows will populate once 4+ weeks of data have been loaded. Send next week's export to continue the series.</div>
+</div>
+
+<!-- ── 01 CHART ── -->
+<div class="section">
+  <div class="section-title">01 &nbsp; Weekly Unit Sales Trend</div>
+  <div class="filter-row" id="chartFilterBar">
+    <span class="filter-label">Region:</span>
+    <button class="pill active" onclick="setChartGroup('all',this)">All Stores</button>
+    <button class="pill nyc" onclick="setChartGroup('nyc',this)">🗽 NYC</button>
+    <button class="pill li_west" onclick="setChartGroup('li_west',this)">🏝️ LI &amp; Westchester</button>
+    <button class="pill nj" onclick="setChartGroup('nj',this)">🌿 NJ / Tri-State</button>
+    <button class="pill ne" onclick="setChartGroup('ne',this)">🍂 New England</button>
+    <button class="pill ca" onclick="setChartGroup('ca',this)">☀️ California</button>
+    <button class="pill sw" onclick="setChartGroup('sw',this)">🌵 Southwest</button>
+  </div>
+  <div class="filter-row" id="chartViewBar">
+    <span class="filter-label">View:</span>
+    <button class="pill toggle-pill active" onclick="setChartView('format',this)">By Format</button>
+    <button class="pill toggle-pill" onclick="setChartView('tubFlavor',this)">Tub Flavors</button>
+    <button class="pill toggle-pill" onclick="setChartView('dipFlavor',this)">Dipper Flavors</button>
+  </div>
+  <div class="card"><div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
+</div>
+
+<!-- ── 02 MOMENTUM ── -->
+<div class="section">
+  <div class="section-title">02 &nbsp; Store Momentum</div>
+  <div class="filter-row" id="momentumViewBar">
+    <span class="filter-label">View:</span>
+    <button class="pill toggle-pill active" onclick="setMomentumView('total',this)">Total</button>
+    <button class="pill toggle-pill" onclick="setMomentumView('tub',this)">Tubs Only</button>
+    <button class="pill toggle-pill" onclick="setMomentumView('dipper',this)">Dippers Only</button>
+  </div>
+  <div class="filter-row" id="momentumFilterBar">
+    <span class="filter-label">Region:</span>
+    <button class="pill active" onclick="setMomentumGroup('all',this)">All Stores</button>
+    <button class="pill nyc" onclick="setMomentumGroup('nyc',this)">🗽 NYC</button>
+    <button class="pill li_west" onclick="setMomentumGroup('li_west',this)">🏝️ LI &amp; Westchester</button>
+    <button class="pill nj" onclick="setMomentumGroup('nj',this)">🌿 NJ / Tri-State</button>
+    <button class="pill ne" onclick="setMomentumGroup('ne',this)">🍂 New England</button>
+    <button class="pill ca" onclick="setMomentumGroup('ca',this)">☀️ California</button>
+    <button class="pill sw" onclick="setMomentumGroup('sw',this)">🌵 Southwest</button>
+  </div>
+  <div class="table-wrap">
+    <table id="momentumTable">
+      <thead><tr>
+        <th onclick="sortMomentum('store')">Store <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('total_rev')">Total Rev <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('total_units')">Total Units <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('lw_rev')">Last Week Rev <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('lw_units')">Last Week Units <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('l4w_rev')">L4W Avg Rev <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('l4w_units')">L4W Avg Units <span class="sort-icon">↕</span></th>
+        <th onclick="sortMomentum('trend')">Trend <span class="sort-icon">↕</span></th>
+      </tr></thead>
+      <tbody id="momentumBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── 03 SKU BREAKDOWN ── -->
+<div class="section">
+  <div class="section-title">03 &nbsp; SKU Breakdown
+    <span class="section-note">Grouped by format &middot; sorted by units within group</span>
+  </div>
+  <div class="table-wrap">
+    <table id="skuTable">
+      <thead><tr>
+        <th>SKU</th>
+        <th>Units</th>
+        <th>Revenue</th>
+        <th>Avg Price</th>
+        <th># Stores Ranged</th>
+        <th>% of Total Units</th>
+      </tr></thead>
+      <tbody id="skuBody"></tbody>
+    </table>
+  </div>
+  <div style="height:24px"></div>
+</div>
+
+<script>
+// ── EMBEDDED DATA (regenerated each week from the retailer export) ──
+const WEEK_START = "2026-08-16";
+
+const CLUSTER_LABELS = {
+  all:'All Stores', nyc:'NYC', li_west:'LI & Westchester', nj:'NJ / Tri-State',
+  ne:'New England', ca:'California', sw:'Southwest'
+};
+
+const KPIS = {"total_units": 185, "total_revenue": 1252.35, "lw_units": 185, "lw_revenue": 1252.35, "tub_units": 142, "dipper_units": 43, "num_stores": 69, "num_weeks": 1};
+
+const CHART_DATA = {"all": [{"tubs": 142, "dippers": 43, "total": 185, "tub_everything": 16, "dip_everything": null, "tub_hotHoney": 61, "dip_hotHoney": 39, "tub_plain": 23, "dip_plain": null, "tub_ranch": 42, "dip_ranch": 4, "week": "2026-08-16"}], "nyc": [{"tubs": 85, "dippers": 0, "total": 85, "tub_everything": 7, "dip_everything": null, "tub_hotHoney": 31, "dip_hotHoney": null, "tub_plain": 16, "dip_plain": null, "tub_ranch": 31, "dip_ranch": null, "week": "2026-08-16"}], "li_west": [{"tubs": 4, "dippers": 0, "total": 4, "tub_everything": 1, "dip_everything": null, "tub_hotHoney": 2, "dip_hotHoney": null, "tub_plain": null, "dip_plain": null, "tub_ranch": 1, "dip_ranch": null, "week": "2026-08-16"}], "nj": [{"tubs": 2, "dippers": 0, "total": 2, "tub_everything": null, "dip_everything": null, "tub_hotHoney": null, "dip_hotHoney": null, "tub_plain": 1, "dip_plain": null, "tub_ranch": 1, "dip_ranch": null, "week": "2026-08-16"}], "ne": [{"tubs": 24, "dippers": 0, "total": 24, "tub_everything": 3, "dip_everything": null, "tub_hotHoney": 10, "dip_hotHoney": null, "tub_plain": 5, "dip_plain": null, "tub_ranch": 6, "dip_ranch": null, "week": "2026-08-16"}], "ca": [{"tubs": 25, "dippers": 38, "total": 63, "tub_everything": 4, "dip_everything": null, "tub_hotHoney": 18, "dip_hotHoney": 34, "tub_plain": 1, "dip_plain": null, "tub_ranch": 2, "dip_ranch": 4, "week": "2026-08-16"}], "sw": [{"tubs": 2, "dippers": 5, "total": 7, "tub_everything": 1, "dip_everything": null, "tub_hotHoney": null, "dip_hotHoney": 5, "tub_plain": null, "dip_plain": null, "tub_ranch": 1, "dip_ranch": null, "week": "2026-08-16"}]};
+
+const MOMENTUM_BY_VIEW = {
+  total: [{"store": "Upper West Side 61st and Broadway", "store_id": "T3334", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 9, "total_rev": 74.61, "lw_units": 9, "lw_rev": 74.61, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan East Village", "store_id": "T3249", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 8, "total_rev": 63.78, "lw_units": 8, "lw_rev": 63.78, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego North Park", "store_id": "T3302", "cluster": "ca", "has_dippers_ranged": true, "total_units": 8, "total_rev": 47.54, "lw_units": 8, "lw_rev": 47.54, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Washington Heights", "store_id": "T3329", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 6, "total_rev": 46.14, "lw_units": 6, "lw_rev": 46.14, "l4w_units": null, "l4w_rev": null}, {"store": "Times Square 42nd Street", "store_id": "T3385", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 41.45, "lw_units": 5, "lw_rev": 41.45, "l4w_units": null, "l4w_rev": null}, {"store": "Harlem 125th St", "store_id": "T3337", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 40.15, "lw_units": 5, "lw_rev": 40.15, "l4w_units": null, "l4w_rev": null}, {"store": "Staten Island Forest Ave", "store_id": "T3291", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 6, "total_rev": 39.57, "lw_units": 6, "lw_rev": 39.57, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego South Park", "store_id": "T3205", "cluster": "ca", "has_dippers_ranged": true, "total_units": 6, "total_rev": 38.31, "lw_units": 6, "lw_rev": 38.31, "l4w_units": null, "l4w_rev": null}, {"store": "Queens Jamaica Avenue", "store_id": "T3372", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 35.09, "lw_units": 5, "lw_rev": 35.09, "l4w_units": null, "l4w_rev": null}, {"store": "Los Angeles Koreatown", "store_id": "T3216", "cluster": "ca", "has_dippers_ranged": true, "total_units": 6, "total_rev": 33.88, "lw_units": 6, "lw_rev": 33.88, "l4w_units": null, "l4w_rev": null}, {"store": "South Burlington", "store_id": "T3306", "cluster": "ne", "has_dippers_ranged": false, "total_units": 5, "total_rev": 33.55, "lw_units": 5, "lw_rev": 33.55, "l4w_units": null, "l4w_rev": null}, {"store": "Jackson Heights", "store_id": "T3280", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.76, "lw_units": 4, "lw_rev": 30.76, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Bay Parkway", "store_id": "T3356", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.76, "lw_units": 4, "lw_rev": 30.76, "l4w_units": null, "l4w_rev": null}, {"store": "Queens Astoria 31st and Ditmars", "store_id": "T3289", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.38, "lw_units": 4, "lw_rev": 30.38, "l4w_units": null, "l4w_rev": null}, {"store": "Cambridge Central Square", "store_id": "T3222", "cluster": "ne", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.36, "lw_units": 4, "lw_rev": 30.36, "l4w_units": null, "l4w_rev": null}, {"store": "Medford MA", "store_id": "T3287", "cluster": "ne", "has_dippers_ranged": false, "total_units": 4, "total_rev": 29.96, "lw_units": 4, "lw_rev": 29.96, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Hells Kitchen", "store_id": "T3268", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 26.62, "lw_units": 4, "lw_rev": 26.62, "l4w_units": null, "l4w_rev": null}, {"store": "Murrieta North", "store_id": "T2499", "cluster": "ca", "has_dippers_ranged": true, "total_units": 6, "total_rev": 25.96, "lw_units": 6, "lw_rev": 25.96, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Union Square", "store_id": "T3380", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 24.87, "lw_units": 3, "lw_rev": 24.87, "l4w_units": null, "l4w_rev": null}, {"store": "Upper East Side 86th and Lex", "store_id": "T3387", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 24.46, "lw_units": 3, "lw_rev": 24.46, "l4w_units": null, "l4w_rev": null}, {"store": "Tribeca", "store_id": "T3229", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 23.67, "lw_units": 3, "lw_rev": 23.67, "l4w_units": null, "l4w_rev": null}, {"store": "Ocean Beach", "store_id": "T3303", "cluster": "ca", "has_dippers_ranged": true, "total_units": 4, "total_rev": 23.32, "lw_units": 4, "lw_rev": 23.32, "l4w_units": null, "l4w_rev": null}, {"store": "LA LaBrea and 4th St", "store_id": "T3359", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 19.77, "lw_units": 3, "lw_rev": 19.77, "l4w_units": null, "l4w_rev": null}, {"store": "Upper West Side 98th and Columbus", "store_id": "T3394", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.58, "lw_units": 2, "lw_rev": 16.58, "l4w_units": null, "l4w_rev": null}, {"store": "Chelsea 23rd and 8th", "store_id": "T3412", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.58, "lw_units": 2, "lw_rev": 16.58, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Herald Square", "store_id": "T3277", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.17, "lw_units": 2, "lw_rev": 16.17, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Midwood", "store_id": "T3243", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "Port Washington North", "store_id": "T3259", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "LIC Court Square", "store_id": "T3433", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Packards Corner", "store_id": "T3226", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.18, "lw_units": 2, "lw_rev": 15.18, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Roslindale", "store_id": "T3223", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 14.98, "lw_units": 2, "lw_rev": 14.98, "l4w_units": null, "l4w_rev": null}, {"store": "Cambridge Porter Square", "store_id": "T3304", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 14.98, "lw_units": 2, "lw_rev": 14.98, "l4w_units": null, "l4w_rev": null}, {"store": "Hesperia", "store_id": "T2468", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 14.97, "lw_units": 3, "lw_rev": 14.97, "l4w_units": null, "l4w_rev": null}, {"store": "San Juan Capistrano", "store_id": "T3366", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 13.98, "lw_units": 2, "lw_rev": 13.98, "l4w_units": null, "l4w_rev": null}, {"store": "West Lebanon Main St", "store_id": "T3401", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 13.98, "lw_units": 2, "lw_rev": 13.98, "l4w_units": null, "l4w_rev": null}, {"store": "Las Vegas Showcase", "store_id": "T3323", "cluster": "sw", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.67, "lw_units": 3, "lw_rev": 13.67, "l4w_units": null, "l4w_rev": null}, {"store": "LA Silver Lake", "store_id": "T3288", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.17, "lw_units": 3, "lw_rev": 13.17, "l4w_units": null, "l4w_rev": null}, {"store": "LA Westchester Sepulveda Blvd", "store_id": "T3371", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.17, "lw_units": 3, "lw_rev": 13.17, "l4w_units": null, "l4w_rev": null}, {"store": "Santa Monica 16th and Wilshire", "store_id": "T3338", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 12.51, "lw_units": 3, "lw_rev": 12.51, "l4w_units": null, "l4w_rev": null}, {"store": "Mission Viejo South", "store_id": "T3315", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 10.98, "lw_units": 2, "lw_rev": 10.98, "l4w_units": null, "l4w_rev": null}, {"store": "Lower East Side Grand and Clinton", "store_id": "T3284", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 8.29, "lw_units": 1, "lw_rev": 8.29, "l4w_units": null, "l4w_rev": null}, {"store": "Costa Mesa 17th St", "store_id": "T3391", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 8.03, "lw_units": 2, "lw_rev": 8.03, "l4w_units": null, "l4w_rev": null}, {"store": "Huntington Beach Garfield and Beach", "store_id": "T3422", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 7.98, "lw_units": 2, "lw_rev": 7.98, "l4w_units": null, "l4w_rev": null}, {"store": "Forest Hills", "store_id": "T3230", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Bensonhurst", "store_id": "T3276", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Bronx Fordham Road", "store_id": "T3395", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Port Chester", "store_id": "T3399", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Flatbush and Church", "store_id": "T3404", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Kings Plaza", "store_id": "T3429", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Beacon Hill", "store_id": "T3368", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.59, "lw_units": 1, "lw_rev": 7.59, "l4w_units": null, "l4w_rev": null}, {"store": "LA Glassell Park", "store_id": "T3262", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 7.49, "lw_units": 1, "lw_rev": 7.49, "l4w_units": null, "l4w_rev": null}, {"store": "La Canada Flintridge", "store_id": "T3293", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 7.49, "lw_units": 1, "lw_rev": 7.49, "l4w_units": null, "l4w_rev": null}, {"store": "Hyannis Cape Cod", "store_id": "T3324", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.12, "lw_units": 1, "lw_rev": 7.12, "l4w_units": null, "l4w_rev": null}, {"store": "Orem State Street", "store_id": "T1754", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Gilbert SW", "store_id": "T1960", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Tulare", "store_id": "T2349", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Menifee", "store_id": "T2471", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Closter NJ", "store_id": "T3235", "cluster": "nj", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Stoneham Redstone", "store_id": "T3253", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Parsippany", "store_id": "T3290", "cluster": "nj", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Lawndale Hawthorne Blvd", "store_id": "T3336", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Freeport", "store_id": "T3236", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 1, "total_rev": 5.31, "lw_units": 1, "lw_rev": 5.31, "l4w_units": null, "l4w_rev": null}, {"store": "Spring Valley Jamacha Rd", "store_id": "T3319", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.39, "lw_units": 1, "lw_rev": 4.39, "l4w_units": null, "l4w_rev": null}, {"store": "LA Burbank West", "store_id": "T3251", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.29, "lw_units": 1, "lw_rev": 4.29, "l4w_units": null, "l4w_rev": null}, {"store": "LA Sawtelle", "store_id": "T3231", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.17, "lw_units": 1, "lw_rev": 4.17, "l4w_units": null, "l4w_rev": null}, {"store": "LA 18th and La Cienega", "store_id": "T3347", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.17, "lw_units": 1, "lw_rev": 4.17, "l4w_units": null, "l4w_rev": null}, {"store": "Gilbert Gateway", "store_id": "T1959", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}, {"store": "Phoenix 7th Street and Bell", "store_id": "T2236", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}, {"store": "Yorba Linda", "store_id": "T3445", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}],
+  tub: [{"store": "Upper West Side 61st and Broadway", "store_id": "T3334", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 9, "total_rev": 74.61, "lw_units": 9, "lw_rev": 74.61, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan East Village", "store_id": "T3249", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 8, "total_rev": 63.78, "lw_units": 8, "lw_rev": 63.78, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Washington Heights", "store_id": "T3329", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 6, "total_rev": 46.14, "lw_units": 6, "lw_rev": 46.14, "l4w_units": null, "l4w_rev": null}, {"store": "Times Square 42nd Street", "store_id": "T3385", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 41.45, "lw_units": 5, "lw_rev": 41.45, "l4w_units": null, "l4w_rev": null}, {"store": "Harlem 125th St", "store_id": "T3337", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 40.15, "lw_units": 5, "lw_rev": 40.15, "l4w_units": null, "l4w_rev": null}, {"store": "Staten Island Forest Ave", "store_id": "T3291", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 6, "total_rev": 39.57, "lw_units": 6, "lw_rev": 39.57, "l4w_units": null, "l4w_rev": null}, {"store": "Queens Jamaica Avenue", "store_id": "T3372", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 5, "total_rev": 35.09, "lw_units": 5, "lw_rev": 35.09, "l4w_units": null, "l4w_rev": null}, {"store": "South Burlington", "store_id": "T3306", "cluster": "ne", "has_dippers_ranged": false, "total_units": 5, "total_rev": 33.55, "lw_units": 5, "lw_rev": 33.55, "l4w_units": null, "l4w_rev": null}, {"store": "Jackson Heights", "store_id": "T3280", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.76, "lw_units": 4, "lw_rev": 30.76, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Bay Parkway", "store_id": "T3356", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.76, "lw_units": 4, "lw_rev": 30.76, "l4w_units": null, "l4w_rev": null}, {"store": "Queens Astoria 31st and Ditmars", "store_id": "T3289", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.38, "lw_units": 4, "lw_rev": 30.38, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego South Park", "store_id": "T3205", "cluster": "ca", "has_dippers_ranged": true, "total_units": 4, "total_rev": 30.36, "lw_units": 4, "lw_rev": 30.36, "l4w_units": null, "l4w_rev": null}, {"store": "Cambridge Central Square", "store_id": "T3222", "cluster": "ne", "has_dippers_ranged": false, "total_units": 4, "total_rev": 30.36, "lw_units": 4, "lw_rev": 30.36, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego North Park", "store_id": "T3302", "cluster": "ca", "has_dippers_ranged": true, "total_units": 4, "total_rev": 29.98, "lw_units": 4, "lw_rev": 29.98, "l4w_units": null, "l4w_rev": null}, {"store": "Medford MA", "store_id": "T3287", "cluster": "ne", "has_dippers_ranged": false, "total_units": 4, "total_rev": 29.96, "lw_units": 4, "lw_rev": 29.96, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Hells Kitchen", "store_id": "T3268", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 4, "total_rev": 26.62, "lw_units": 4, "lw_rev": 26.62, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Union Square", "store_id": "T3380", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 24.87, "lw_units": 3, "lw_rev": 24.87, "l4w_units": null, "l4w_rev": null}, {"store": "Upper East Side 86th and Lex", "store_id": "T3387", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 24.46, "lw_units": 3, "lw_rev": 24.46, "l4w_units": null, "l4w_rev": null}, {"store": "Tribeca", "store_id": "T3229", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 3, "total_rev": 23.67, "lw_units": 3, "lw_rev": 23.67, "l4w_units": null, "l4w_rev": null}, {"store": "Los Angeles Koreatown", "store_id": "T3216", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 21.95, "lw_units": 3, "lw_rev": 21.95, "l4w_units": null, "l4w_rev": null}, {"store": "Upper West Side 98th and Columbus", "store_id": "T3394", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.58, "lw_units": 2, "lw_rev": 16.58, "l4w_units": null, "l4w_rev": null}, {"store": "Chelsea 23rd and 8th", "store_id": "T3412", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.58, "lw_units": 2, "lw_rev": 16.58, "l4w_units": null, "l4w_rev": null}, {"store": "Manhattan Herald Square", "store_id": "T3277", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 16.17, "lw_units": 2, "lw_rev": 16.17, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Midwood", "store_id": "T3243", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "Port Washington North", "store_id": "T3259", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "LA LaBrea and 4th St", "store_id": "T3359", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "LIC Court Square", "store_id": "T3433", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.38, "lw_units": 2, "lw_rev": 15.38, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Packards Corner", "store_id": "T3226", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 15.18, "lw_units": 2, "lw_rev": 15.18, "l4w_units": null, "l4w_rev": null}, {"store": "Ocean Beach", "store_id": "T3303", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 15.18, "lw_units": 2, "lw_rev": 15.18, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Roslindale", "store_id": "T3223", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 14.98, "lw_units": 2, "lw_rev": 14.98, "l4w_units": null, "l4w_rev": null}, {"store": "Cambridge Porter Square", "store_id": "T3304", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 14.98, "lw_units": 2, "lw_rev": 14.98, "l4w_units": null, "l4w_rev": null}, {"store": "San Juan Capistrano", "store_id": "T3366", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 13.98, "lw_units": 2, "lw_rev": 13.98, "l4w_units": null, "l4w_rev": null}, {"store": "West Lebanon Main St", "store_id": "T3401", "cluster": "ne", "has_dippers_ranged": false, "total_units": 2, "total_rev": 13.98, "lw_units": 2, "lw_rev": 13.98, "l4w_units": null, "l4w_rev": null}, {"store": "Lower East Side Grand and Clinton", "store_id": "T3284", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 8.29, "lw_units": 1, "lw_rev": 8.29, "l4w_units": null, "l4w_rev": null}, {"store": "Forest Hills", "store_id": "T3230", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Bensonhurst", "store_id": "T3276", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Bronx Fordham Road", "store_id": "T3395", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Port Chester", "store_id": "T3399", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Flatbush and Church", "store_id": "T3404", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Brooklyn Kings Plaza", "store_id": "T3429", "cluster": "nyc", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.69, "lw_units": 1, "lw_rev": 7.69, "l4w_units": null, "l4w_rev": null}, {"store": "Boston Beacon Hill", "store_id": "T3368", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.59, "lw_units": 1, "lw_rev": 7.59, "l4w_units": null, "l4w_rev": null}, {"store": "LA Glassell Park", "store_id": "T3262", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 7.49, "lw_units": 1, "lw_rev": 7.49, "l4w_units": null, "l4w_rev": null}, {"store": "La Canada Flintridge", "store_id": "T3293", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 7.49, "lw_units": 1, "lw_rev": 7.49, "l4w_units": null, "l4w_rev": null}, {"store": "Hyannis Cape Cod", "store_id": "T3324", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 7.12, "lw_units": 1, "lw_rev": 7.12, "l4w_units": null, "l4w_rev": null}, {"store": "Orem State Street", "store_id": "T1754", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Gilbert SW", "store_id": "T1960", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Tulare", "store_id": "T2349", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Hesperia", "store_id": "T2468", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Menifee", "store_id": "T2471", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Murrieta North", "store_id": "T2499", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Closter NJ", "store_id": "T3235", "cluster": "nj", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Stoneham Redstone", "store_id": "T3253", "cluster": "ne", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Parsippany", "store_id": "T3290", "cluster": "nj", "has_dippers_ranged": false, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Mission Viejo South", "store_id": "T3315", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Lawndale Hawthorne Blvd", "store_id": "T3336", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 6.99, "lw_units": 1, "lw_rev": 6.99, "l4w_units": null, "l4w_rev": null}, {"store": "Freeport", "store_id": "T3236", "cluster": "li_west", "has_dippers_ranged": false, "total_units": 1, "total_rev": 5.31, "lw_units": 1, "lw_rev": 5.31, "l4w_units": null, "l4w_rev": null}],
+  dipper: [{"store": "Murrieta North", "store_id": "T2499", "cluster": "ca", "has_dippers_ranged": true, "total_units": 5, "total_rev": 18.97, "lw_units": 5, "lw_rev": 18.97, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego North Park", "store_id": "T3302", "cluster": "ca", "has_dippers_ranged": true, "total_units": 4, "total_rev": 17.56, "lw_units": 4, "lw_rev": 17.56, "l4w_units": null, "l4w_rev": null}, {"store": "Las Vegas Showcase", "store_id": "T3323", "cluster": "sw", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.67, "lw_units": 3, "lw_rev": 13.67, "l4w_units": null, "l4w_rev": null}, {"store": "LA Silver Lake", "store_id": "T3288", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.17, "lw_units": 3, "lw_rev": 13.17, "l4w_units": null, "l4w_rev": null}, {"store": "LA Westchester Sepulveda Blvd", "store_id": "T3371", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 13.17, "lw_units": 3, "lw_rev": 13.17, "l4w_units": null, "l4w_rev": null}, {"store": "Santa Monica 16th and Wilshire", "store_id": "T3338", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 12.51, "lw_units": 3, "lw_rev": 12.51, "l4w_units": null, "l4w_rev": null}, {"store": "Los Angeles Koreatown", "store_id": "T3216", "cluster": "ca", "has_dippers_ranged": true, "total_units": 3, "total_rev": 11.93, "lw_units": 3, "lw_rev": 11.93, "l4w_units": null, "l4w_rev": null}, {"store": "Ocean Beach", "store_id": "T3303", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 8.14, "lw_units": 2, "lw_rev": 8.14, "l4w_units": null, "l4w_rev": null}, {"store": "Costa Mesa 17th St", "store_id": "T3391", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 8.03, "lw_units": 2, "lw_rev": 8.03, "l4w_units": null, "l4w_rev": null}, {"store": "Hesperia", "store_id": "T2468", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 7.98, "lw_units": 2, "lw_rev": 7.98, "l4w_units": null, "l4w_rev": null}, {"store": "Huntington Beach Garfield and Beach", "store_id": "T3422", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 7.98, "lw_units": 2, "lw_rev": 7.98, "l4w_units": null, "l4w_rev": null}, {"store": "San Diego South Park", "store_id": "T3205", "cluster": "ca", "has_dippers_ranged": true, "total_units": 2, "total_rev": 7.95, "lw_units": 2, "lw_rev": 7.95, "l4w_units": null, "l4w_rev": null}, {"store": "Spring Valley Jamacha Rd", "store_id": "T3319", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.39, "lw_units": 1, "lw_rev": 4.39, "l4w_units": null, "l4w_rev": null}, {"store": "LA LaBrea and 4th St", "store_id": "T3359", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.39, "lw_units": 1, "lw_rev": 4.39, "l4w_units": null, "l4w_rev": null}, {"store": "LA Burbank West", "store_id": "T3251", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.29, "lw_units": 1, "lw_rev": 4.29, "l4w_units": null, "l4w_rev": null}, {"store": "LA Sawtelle", "store_id": "T3231", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.17, "lw_units": 1, "lw_rev": 4.17, "l4w_units": null, "l4w_rev": null}, {"store": "LA 18th and La Cienega", "store_id": "T3347", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 4.17, "lw_units": 1, "lw_rev": 4.17, "l4w_units": null, "l4w_rev": null}, {"store": "Gilbert Gateway", "store_id": "T1959", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}, {"store": "Phoenix 7th Street and Bell", "store_id": "T2236", "cluster": "sw", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}, {"store": "Mission Viejo South", "store_id": "T3315", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}, {"store": "Yorba Linda", "store_id": "T3445", "cluster": "ca", "has_dippers_ranged": true, "total_units": 1, "total_rev": 3.99, "lw_units": 1, "lw_rev": 3.99, "l4w_units": null, "l4w_rev": null}]
+};
+const MOMENTUM_VIEW_LABELS = {total:'Total', tub:'Tubs Only', dipper:'Dippers Only'};
+
+const SKU_BREAKDOWN = [{"format": "tub", "flavor": "hotHoney", "units": 61, "revenue": 460.22, "avg_price": 7.54, "num_stores_ranged": 111}, {"format": "tub", "flavor": "ranch", "units": 42, "revenue": 314.82, "avg_price": 7.5, "num_stores_ranged": 67}, {"format": "dipper", "flavor": "hotHoney", "units": 39, "revenue": 162.67, "avg_price": 4.17, "num_stores_ranged": 57}, {"format": "tub", "flavor": "plain", "units": 23, "revenue": 178.35, "avg_price": 7.75, "num_stores_ranged": 67}, {"format": "tub", "flavor": "everything", "units": 16, "revenue": 120.53, "avg_price": 7.53, "num_stores_ranged": 111}, {"format": "dipper", "flavor": "ranch", "units": 4, "revenue": 15.76, "avg_price": 3.94, "num_stores_ranged": 13}, {"format": "dipper", "flavor": "plain", "units": 0, "revenue": 0.0, "avg_price": 0, "num_stores_ranged": 13}, {"format": "dipper", "flavor": "everything", "units": 0, "revenue": 0.0, "avg_price": 0, "num_stores_ranged": 57}];
+
+const FLAVOR_LABELS = {everything:'Everything', hotHoney:'Hot Honey', plain:'Plain', ranch:'Ranch'};
+const FORMAT_LABELS = {tub:'Tub (7oz)', dipper:'Dipper (4.1oz)'};
+
+// ── CHART ──────────────────────────────────────────────
+let trendChart = null;
+let chartGroup = 'all', chartView = 'format';
+
+function buildChart() {
+  const data = CHART_DATA[chartGroup] || [];
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+
+  let datasets;
+  if (chartView === 'format') {
+    datasets = [
+      {label:'Tubs',    data:data.map(d=>d.tubs),    borderColor:'#2563EB', borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false},
+      {label:'Dippers', data:data.map(d=>d.dippers), borderColor:'#D97706', borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false},
+    ];
+  } else if (chartView === 'tubFlavor') {
+    datasets = [
+      {label:'Everything', data:data.map(d=>d.tub_everything), borderColor:'#2563EB', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Hot Honey',  data:data.map(d=>d.tub_hotHoney),   borderColor:'#D97706', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Plain',      data:data.map(d=>d.tub_plain),      borderColor:'#059669', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Ranch',      data:data.map(d=>d.tub_ranch),      borderColor:'#9333EA', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+    ];
+  } else {
+    datasets = [
+      {label:'Everything', data:data.map(d=>d.dip_everything), borderColor:'#2563EB', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Hot Honey',  data:data.map(d=>d.dip_hotHoney),   borderColor:'#D97706', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Plain',      data:data.map(d=>d.dip_plain),      borderColor:'#059669', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+      {label:'Ranch',      data:data.map(d=>d.dip_ranch),      borderColor:'#9333EA', borderWidth:1.5, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:false, spanGaps:false},
+    ];
+  }
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => {
+        const dt = new Date(d.week + 'T00:00:00');
+        return dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+      }),
+      datasets
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      plugins: {
+        legend: {position:'top', align:'end', labels:{boxWidth:12, padding:16, font:{size:12, family:'DM Sans'}}},
+        tooltip: {callbacks: {label: c => ' ' + c.dataset.label + ': ' + (c.parsed.y===null?'—':Math.round(c.parsed.y)) + ' units'}},
+      },
+      scales: {
+        x: {grid:{color:'#f0eeea'}, ticks:{font:{size:11, family:'DM Mono'}, maxRotation:45}, title:{display:true, text:'Week Starting', font:{size:11, family:'DM Sans'}, color:'#6b6b6b', padding:{top:8}}},
+        y: {grid:{color:'#f0eeea'}, ticks:{font:{size:11, family:'DM Mono'}, callback:v=>v.toLocaleString()}, title:{display:true, text:'Units Sold', font:{size:11, family:'DM Sans'}, color:'#6b6b6b', padding:{bottom:8}}}
+      }
+    }
+  });
+}
+
+function setChartGroup(group, btn) {
+  document.querySelectorAll('#chartFilterBar .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  chartGroup = group;
+  buildChart();
+}
+function setChartView(view, btn) {
+  document.querySelectorAll('#chartViewBar .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  chartView = view;
+  buildChart();
+}
+// initial buildChart() runs after password unlock, see gate script
+
+// ── MOMENTUM ───────────────────────────────────────────
+let momentumGroup = 'all', momentumView = 'total', sortCol = 'total_rev', sortDir = -1;
+
+function setMomentumView(view, btn) {
+  document.querySelectorAll('#momentumViewBar .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  momentumView = view;
+  renderMomentum();
+}
+
+function setMomentumGroup(group, btn) {
+  document.querySelectorAll('#momentumFilterBar .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  momentumGroup = group;
+  renderMomentum();
+}
+
+function sortMomentum(col) {
+  sortDir = (sortCol === col) ? sortDir * -1 : (col === 'store' ? 1 : -1);
+  sortCol = col;
+  const cols = ['store','total_rev','total_units','lw_rev','lw_units','l4w_rev','l4w_units','trend'];
+  document.querySelectorAll('#momentumTable thead th').forEach(th => {
+    th.classList.remove('sorted');
+    th.querySelector('.sort-icon').textContent = '↕';
+  });
+  const idx = cols.indexOf(col);
+  if (idx >= 0) {
+    const th = document.querySelectorAll('#momentumTable thead th')[idx];
+    th.classList.add('sorted');
+    th.querySelector('.sort-icon').textContent = sortDir === -1 ? '↓' : '↑';
+  }
+  renderMomentum();
+}
+
+const fmt  = (v, dec=2) => v === null || v === undefined ? '—' : '$' + v.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+const fmtN = (v, dec=0) => v === null || v === undefined ? '—' : v.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+
+function renderMomentum() {
+  let data = MOMENTUM_BY_VIEW[momentumView].filter(s => momentumGroup === 'all' || s.cluster === momentumGroup);
+
+  data = [...data].sort((a, b) => {
+    if (sortCol === 'trend') {
+      const av = a.l4w_units === null ? -1 : (a.lw_units >= a.l4w_units ? 1 : 0);
+      const bv = b.l4w_units === null ? -1 : (b.lw_units >= b.l4w_units ? 1 : 0);
+      return sortDir * (bv - av);
+    }
+    let av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+    if (av === null) av = -Infinity;
+    if (bv === null) bv = -Infinity;
+    return sortDir * (bv - av);
+  });
+
+  const tot = {
+    tr: data.reduce((s,r) => s + r.total_rev, 0),
+    tu: data.reduce((s,r) => s + r.total_units, 0),
+    lr: data.reduce((s,r) => s + r.lw_rev, 0),
+    lu: data.reduce((s,r) => s + r.lw_units, 0),
+  };
+
+  let html = `<tr class="total-row">
+    <td><span style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
+      ∑ ${CLUSTER_LABELS[momentumGroup]} &middot; ${MOMENTUM_VIEW_LABELS[momentumView]}</span></td>
+    <td>${fmt(tot.tr)}</td><td>${fmtN(tot.tu)}</td>
+    <td>${fmt(tot.lr)}</td><td>${fmtN(tot.lu)}</td>
+    <td>—</td><td>—</td>
+    <td>—</td>
+  </tr>`;
+
+  data.forEach((s, i) => {
+    let trend;
+    if (s.l4w_units === null) {
+      trend = '<span class="badge badge-new">New</span>';
+    } else {
+      trend = s.lw_units >= s.l4w_units
+        ? '<span class="badge badge-up">▲ Up</span>'
+        : '<span class="badge badge-down">▼ Down</span>';
+    }
+    const regionTag = `<span class="group-tag gtag-${s.cluster}">${CLUSTER_LABELS[s.cluster]}</span>`;
+    const dipTag = s.has_dippers_ranged ? '<span class="dip-tag">+Dippers</span>' : '';
+    html += `<tr>
+      <td><span class="rank">#${i+1}</span><span class="store-name">${s.store}</span>${regionTag}${dipTag}</td>
+      <td>${fmt(s.total_rev)}</td><td>${fmtN(s.total_units)}</td>
+      <td>${fmt(s.lw_rev)}</td><td>${fmtN(s.lw_units)}</td>
+      <td>${fmt(s.l4w_rev)}</td><td>${fmtN(s.l4w_units, 1)}</td>
+      <td>${trend}</td>
+    </tr>`;
+  });
+
+  document.getElementById('momentumBody').innerHTML = html;
+}
+// renderMomentum() runs after password unlock
+
+// ── SKU BREAKDOWN ──────────────────────────────────────
+function renderSkuBreakdown() {
+  const totalUnits = SKU_BREAKDOWN.reduce((s,r) => s + r.units, 0);
+  const groups = [
+    {key:'tub', label:'Tubs (7oz)'},
+    {key:'dipper', label:'Dippers (4.1oz)'}
+  ];
+  let html = '';
+  groups.forEach(g => {
+    const rows = SKU_BREAKDOWN.filter(r => r.format === g.key);
+    if (rows.length === 0) return;
+    const subtotalUnits = rows.reduce((s,r)=>s+r.units,0);
+    const subtotalRev = rows.reduce((s,r)=>s+r.revenue,0);
+    html += `<tr class="group-row"><td colspan="6">${g.label}</td></tr>`;
+    rows.forEach(r => {
+      const pct = totalUnits ? ((r.units / totalUnits) * 100).toFixed(1) : '0.0';
+      html += `<tr>
+        <td style="padding-left:28px">${FLAVOR_LABELS[r.flavor] || r.flavor}</td>
+        <td>${fmtN(r.units)}</td>
+        <td>${fmt(r.revenue)}</td>
+        <td>${fmt(r.avg_price)}</td>
+        <td>${fmtN(r.num_stores_ranged)}</td>
+        <td>${pct}%</td>
+      </tr>`;
+    });
+    const subPct = totalUnits ? ((subtotalUnits / totalUnits) * 100).toFixed(1) : '0.0';
+    html += `<tr class="total-row">
+      <td>∑ ${g.label}</td>
+      <td>${fmtN(subtotalUnits)}</td>
+      <td>${fmt(subtotalRev)}</td>
+      <td>—</td><td>—</td>
+      <td>${subPct}%</td>
+    </tr>`;
+  });
+  document.getElementById('skuBody').innerHTML = html;
+}
+// renderSkuBreakdown() runs after password unlock
+</script>
+</div><!-- /dashboardContent -->
+
+<script>
+// ── PASSWORD GATE ──────────────────────────────────────
+const SITE_PASSWORD = "eatbezi2024";
+const GATE_KEY = "bezi_target_dashboard_unlocked";
+
+let dashboardInitialized = false;
+function unlockDashboard() {
+  document.getElementById('gateOverlay').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'block';
+  if (!dashboardInitialized) {
+    dashboardInitialized = true;
+    buildChart();
+    renderMomentum();
+    renderSkuBreakdown();
+  }
+}
+
+function checkPassword() {
+  const input = document.getElementById('gatePassword').value;
+  if (input === SITE_PASSWORD) {
+    try { localStorage.setItem(GATE_KEY, '1'); } catch(e) {}
+    unlockDashboard();
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+    document.getElementById('gatePassword').value = '';
+    document.getElementById('gatePassword').focus();
+  }
+}
+
+(function checkExistingUnlock() {
+  try {
+    if (localStorage.getItem(GATE_KEY) === '1') {
+      unlockDashboard();
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>
